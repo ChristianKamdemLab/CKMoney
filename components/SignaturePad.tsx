@@ -9,25 +9,48 @@ interface SignaturePadProps {
 
 const SignaturePad: React.FC<SignaturePadProps> = ({ onSave, label }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
 
+  // Gestion intelligente du redimensionnement pour éviter le flou et les décalages
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
 
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    const updateCanvasSize = () => {
+        const ratio = Math.max(window.devicePixelRatio || 1, 2); // Force haute résolution (min x2)
+        const width = container.offsetWidth;
+        const height = container.offsetHeight;
 
-    // Set high DPI support
-    const ratio = window.devicePixelRatio || 1;
-    canvas.width = canvas.offsetWidth * ratio;
-    canvas.height = canvas.offsetHeight * ratio;
-    ctx.scale(ratio, ratio);
+        // On ne redimensionne que si ça change vraiment pour éviter d'effacer le dessin inutilement
+        if (canvas.width !== width * ratio || canvas.height !== height * ratio) {
+            canvas.width = width * ratio;
+            canvas.height = height * ratio;
+            
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+                ctx.scale(ratio, ratio);
+                ctx.strokeStyle = '#0f172a'; // slate-900
+                ctx.lineWidth = 2.5; // Trait un peu plus épais pour meilleure lisibilité
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+            }
+        }
+    };
+
+    // Observer pour détecter quand la modale a fini de s'ouvrir/animer
+    const resizeObserver = new ResizeObserver(() => {
+        // Petit délai pour laisser l'animation CSS se terminer
+        window.requestAnimationFrame(updateCanvasSize);
+    });
     
-    ctx.strokeStyle = '#0f172a'; // slate-900
-    ctx.lineWidth = 2;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
+    resizeObserver.observe(container);
+    
+    // Appel initial
+    updateCanvasSize();
+
+    return () => resizeObserver.disconnect();
   }, []);
 
   const getCoordinates = (e: React.MouseEvent | React.TouchEvent | MouseEvent | TouchEvent) => {
@@ -52,7 +75,10 @@ const SignaturePad: React.FC<SignaturePadProps> = ({ onSave, label }) => {
   };
 
   const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault();
+    // Empêcher le scroll sur mobile
+    if (e.cancelable) e.preventDefault(); 
+    e.stopPropagation();
+
     const { x, y } = getCoordinates(e);
     const ctx = canvasRef.current?.getContext('2d');
     if (!ctx) return;
@@ -64,7 +90,9 @@ const SignaturePad: React.FC<SignaturePadProps> = ({ onSave, label }) => {
 
   const draw = (e: React.MouseEvent | React.TouchEvent) => {
     if (!isDrawing) return;
-    e.preventDefault();
+    if (e.cancelable) e.preventDefault();
+    e.stopPropagation();
+
     const { x, y } = getCoordinates(e);
     const ctx = canvasRef.current?.getContext('2d');
     if (!ctx) return;
@@ -73,7 +101,7 @@ const SignaturePad: React.FC<SignaturePadProps> = ({ onSave, label }) => {
     ctx.stroke();
   };
 
-  const stopDrawing = () => {
+  const stopDrawing = (e: React.MouseEvent | React.TouchEvent) => {
     if (isDrawing) {
       setIsDrawing(false);
       const canvas = canvasRef.current;
@@ -99,15 +127,17 @@ const SignaturePad: React.FC<SignaturePadProps> = ({ onSave, label }) => {
         <button 
           type="button" 
           onClick={clear}
-          className="text-slate-400 hover:text-red-500 transition-colors p-1"
+          className="text-slate-400 hover:text-red-500 transition-colors p-1 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider"
           title="Effacer"
         >
-          <Eraser size={14} />
+          <Eraser size={12} /> Effacer
         </button>
       </div>
-      <div className="relative h-32 w-full bg-slate-50 border border-slate-200 rounded-xl overflow-hidden touch-none">
+      {/* Container agrandi (h-48 au lieu de h-32) et bordure plus visible */}
+      <div ref={containerRef} className="relative h-48 w-full bg-slate-50 border-2 border-dashed border-slate-200 hover:border-slate-300 transition-colors rounded-xl overflow-hidden">
         <canvas
           ref={canvasRef}
+          style={{ touchAction: 'none' }} // Crucial pour empêcher le scroll
           onMouseDown={startDrawing}
           onMouseMove={draw}
           onMouseUp={stopDrawing}
@@ -115,11 +145,13 @@ const SignaturePad: React.FC<SignaturePadProps> = ({ onSave, label }) => {
           onTouchStart={startDrawing}
           onTouchMove={draw}
           onTouchEnd={stopDrawing}
-          className="w-full h-full cursor-crosshair"
+          className="w-full h-full cursor-crosshair touch-none block"
         />
-        <div className="absolute bottom-2 left-0 right-0 text-center pointer-events-none opacity-20 text-[10px] text-slate-500">
-          Signez ici
-        </div>
+        {!isDrawing && (
+            <div className="absolute bottom-3 right-3 pointer-events-none opacity-30 text-[10px] text-slate-400 font-medium bg-white px-2 py-1 rounded-md">
+            Signez ici
+            </div>
+        )}
       </div>
     </div>
   );
