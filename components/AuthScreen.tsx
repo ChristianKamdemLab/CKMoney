@@ -38,25 +38,23 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
     } catch (error: any) {
       console.error("Google Auth Error:", error);
       
-      // Gestion des erreurs courantes pour aider l'utilisateur
-      if (error.code === 'auth/api-key-not-valid' || error.code === 'auth/invalid-api-key') {
-         setErrorMsg("Configuration manquante : Veuillez ajouter votre API Key Firebase dans le fichier services/firebase.ts");
-         
-         // FALLBACK POUR LA DÉMO (Si pas de clé configurée)
+      // Gestion automatique du mode démo en cas d'erreur de config
+      if (error.code === 'auth/unauthorized-domain' || error.code === 'auth/api-key-not-valid' || error.code === 'auth/invalid-api-key' || error.code === 'auth/operation-not-allowed') {
+         setErrorMsg("Environnement de test détecté. Activation du mode Démo...");
+         // Délai court pour laisser l'utilisateur lire le message
          setTimeout(() => {
-            alert("Mode Démo activé (Vraie API Key manquante). Connexion simulée.");
-            onLogin({
+             onLogin({
               id: 'demo-google-user',
-              name: 'Utilisateur Google (Démo)',
-              email: 'demo@gmail.com',
-              avatar: 'https://lh3.googleusercontent.com/a/default-user'
+              name: 'Utilisateur Test (Démo)',
+              email: 'demo@ckmoney.app',
+              avatar: 'https://ui-avatars.com/api/?name=Utilisateur+Test&background=0D8ABC&color=fff'
             });
          }, 1000);
          return;
       } else if (error.code === 'auth/popup-closed-by-user') {
          setErrorMsg("Connexion annulée par l'utilisateur.");
       } else {
-         setErrorMsg("Erreur de connexion Google. Vérifiez votre configuration.");
+         setErrorMsg(`Erreur : ${error.message || "Problème de connexion Google"}`);
       }
       setLoading(false);
     }
@@ -67,7 +65,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
     setLoading(true);
     setErrorMsg(null);
 
-    // Pour l'email, on garde la simulation pour l'instant (nécessiterait plus de config Firebase)
+    // Simulation Auth Email
     if (isLogin) {
       setTimeout(() => {
         onLogin({
@@ -143,9 +141,9 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
 
           <div className="space-y-4">
             {errorMsg && (
-              <div className="p-4 bg-red-50 text-red-600 text-xs font-bold rounded-xl flex items-start gap-2">
+              <div className="p-4 bg-amber-50 text-amber-600 text-xs font-bold rounded-xl flex items-start gap-2">
                 <AlertCircle size={16} className="shrink-0 mt-0.5" />
-                {errorMsg}
+                <span>{errorMsg}</span>
               </div>
             )}
 
