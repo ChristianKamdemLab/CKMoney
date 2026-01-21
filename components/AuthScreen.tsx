@@ -1,8 +1,8 @@
 
 import React, { useState } from 'react';
 import { User } from '../types';
-import { HandCoins, Mail, ArrowRight, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
-import { signInWithPopup } from "firebase/auth";
+import { HandCoins, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
+import { signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { auth, googleProvider } from "../services/firebase";
 
 interface AuthScreenProps {
@@ -12,7 +12,6 @@ interface AuthScreenProps {
 const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [emailSent, setEmailSent] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
@@ -25,7 +24,6 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
     setLoading(true);
     setErrorMsg(null);
     try {
-      // Appel réel à la popup Google
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
       
@@ -37,78 +35,56 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
       });
     } catch (error: any) {
       console.error("Google Auth Error:", error);
-      
-      // Gestion automatique du mode démo en cas d'erreur de config
-      if (error.code === 'auth/unauthorized-domain' || error.code === 'auth/api-key-not-valid' || error.code === 'auth/invalid-api-key' || error.code === 'auth/operation-not-allowed') {
-         setErrorMsg("Environnement de test détecté. Activation du mode Démo...");
-         // Délai court pour laisser l'utilisateur lire le message
-         setTimeout(() => {
-             onLogin({
-              id: 'demo-google-user',
-              name: 'Utilisateur Test (Démo)',
-              email: 'demo@ckmoney.app',
-              avatar: 'https://ui-avatars.com/api/?name=Utilisateur+Test&background=0D8ABC&color=fff'
-            });
-         }, 1000);
-         return;
-      } else if (error.code === 'auth/popup-closed-by-user') {
-         setErrorMsg("Connexion annulée par l'utilisateur.");
+      if (error.code === 'auth/popup-closed-by-user') {
+         setErrorMsg("Connexion annulée.");
       } else {
-         setErrorMsg(`Erreur : ${error.message || "Problème de connexion Google"}`);
+         setErrorMsg("Impossible de se connecter avec Google. Veuillez vérifier votre configuration.");
       }
       setLoading(false);
     }
   };
 
-  const handleEmailAuth = (e: React.FormEvent) => {
+  const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setErrorMsg(null);
 
-    // Simulation Auth Email
-    if (isLogin) {
-      setTimeout(() => {
+    try {
+        let user;
+        if (isLogin) {
+            // Connexion Réelle
+            const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password);
+            user = userCredential.user;
+        } else {
+            // Inscription Réelle
+            const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
+            user = userCredential.user;
+            // Mise à jour du nom
+            if (formData.name) {
+                await updateProfile(user, { displayName: formData.name });
+            }
+        }
+
         onLogin({
-          id: 'email-user-' + Math.random().toString(36).substr(2, 5),
-          name: 'Utilisateur Démo',
-          email: formData.email
+            id: user.uid,
+            name: user.displayName || formData.name || user.email?.split('@')[0] || 'Utilisateur',
+            email: user.email || formData.email,
+            avatar: user.photoURL || undefined
         });
-      }, 1500);
-    } else {
-      setTimeout(() => {
+
+    } catch (error: any) {
+        console.error("Auth Error", error);
+        let msg = "Une erreur est survenue.";
+        if (error.code === 'auth/wrong-password') msg = "Mot de passe incorrect.";
+        else if (error.code === 'auth/user-not-found') msg = "Aucun compte trouvé avec cet email.";
+        else if (error.code === 'auth/email-already-in-use') msg = "Cet email est déjà utilisé.";
+        else if (error.code === 'auth/weak-password') msg = "Le mot de passe doit contenir au moins 6 caractères.";
+        else if (error.code === 'auth/invalid-email') msg = "Format d'email invalide.";
+        
+        setErrorMsg(msg);
         setLoading(false);
-        setEmailSent(true);
-      }, 1500);
     }
   };
-
-  if (emailSent) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
-        <div className="bg-white rounded-[2.5rem] w-full max-w-md shadow-xl p-8 text-center animate-in zoom-in">
-          <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Mail className="text-emerald-600" size={32} />
-          </div>
-          <h2 className="text-2xl font-black text-slate-900 mb-2">Vérifiez vos emails</h2>
-          <p className="text-slate-500 mb-8">
-            Nous avons envoyé un lien de connexion sécurisé à <strong>{formData.email}</strong>. Cliquez dessus pour activer votre compte.
-          </p>
-          <button 
-            onClick={() => {
-              onLogin({
-                id: 'new-user-789',
-                name: formData.name || 'Nouvel Utilisateur',
-                email: formData.email
-              });
-            }}
-            className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-slate-800 transition-all"
-          >
-            Simuler le clic sur le lien (Démo)
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
@@ -119,7 +95,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
         <h1 className="text-3xl font-black tracking-tight text-slate-900 leading-none mb-1">
           CK<span className="text-indigo-600">Money</span>
         </h1>
-        <p className="text-xs uppercase tracking-[0.3em] text-slate-400 font-bold">by Christian KAMDEM</p>
+        <p className="text-xs uppercase tracking-[0.3em] text-slate-400 font-bold">Gestion de Créances</p>
       </div>
 
       <div className="bg-white rounded-[2.5rem] w-full max-w-md shadow-xl overflow-hidden animate-in slide-in-from-bottom-8 duration-500">
@@ -141,7 +117,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
 
           <div className="space-y-4">
             {errorMsg && (
-              <div className="p-4 bg-amber-50 text-amber-600 text-xs font-bold rounded-xl flex items-start gap-2">
+              <div className="p-4 bg-rose-50 text-rose-600 text-xs font-bold rounded-xl flex items-start gap-2 border border-rose-100">
                 <AlertCircle size={16} className="shrink-0 mt-0.5" />
                 <span>{errorMsg}</span>
               </div>
