@@ -206,7 +206,8 @@ const LoanForm: React.FC<LoanFormProps> = ({ onClose, user, onSuccess, onViewCon
 
   // --- ÉCRAN SUCCÈS ---
   if (createdLoan) {
-      let whatsappText = `Salut ${createdLoan.borrowerName}, voici la reconnaissance de dette pour le prêt de ${createdLoan.amount} ${createdLoan.currency}. Merci de l'imprimer et de la signer.`;
+      // Message adapté pour refléter la limitation de WhatsApp
+      let whatsappText = `Salut ${createdLoan.borrowerName}, je viens de générer la reconnaissance de dette pour le prêt de ${createdLoan.amount} ${createdLoan.currency}. Je t'envoie le fichier PDF tout de suite après ce message.`;
       
       const whatsappLink = createdLoan.borrowerPhone 
         ? `https://wa.me/${createdLoan.borrowerPhone}?text=${encodeURIComponent(whatsappText)}`
@@ -230,7 +231,7 @@ const LoanForm: React.FC<LoanFormProps> = ({ onClose, user, onSuccess, onViewCon
                         }} 
                         className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 shadow-xl shadow-indigo-100"
                     >
-                        <Printer size={18} /> TÉLÉCHARGER / IMPRIMER
+                        <Printer size={18} /> TÉLÉCHARGER LE PDF
                     </button>
                     
                     <a 
@@ -239,8 +240,12 @@ const LoanForm: React.FC<LoanFormProps> = ({ onClose, user, onSuccess, onViewCon
                         rel="noopener noreferrer"
                         className="w-full py-4 bg-[#25D366] text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-[#128C7E] transition-all flex items-center justify-center gap-2 shadow-xl shadow-green-100"
                     >
-                        <MessageCircle size={18} /> ENVOYER SUR WHATSAPP
+                        <MessageCircle size={18} /> ENVOYER MSG WHATSAPP
                     </a>
+                    
+                    <p className="text-[10px] text-slate-400 font-medium">
+                        (N'oubliez pas de joindre le PDF téléchargé à votre message)
+                    </p>
 
                     <button onClick={onClose} className="w-full py-4 bg-white text-slate-900 border-2 border-slate-100 rounded-2xl font-bold text-sm hover:bg-slate-50 transition-all">
                         Retour au Tableau de Bord
