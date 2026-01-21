@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, ErrorInfo, ReactNode } from 'react';
 import { Loan, User } from './types';
 import LoanCard from './components/LoanCard';
@@ -16,7 +15,7 @@ import { checkAutomaticNotifications } from './services/notificationService';
 
 // --- 0. ERROR BOUNDARY ---
 interface ErrorBoundaryProps {
-  children: ReactNode;
+  children?: ReactNode;
 }
 
 interface ErrorBoundaryState {
@@ -25,6 +24,8 @@ interface ErrorBoundaryState {
 }
 
 class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  public state: ErrorBoundaryState;
+
   constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false, error: null };
