@@ -1,136 +1,170 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Loan } from '../types';
 import { Printer, ArrowLeft, ShieldCheck, CheckCircle } from 'lucide-react';
 
 interface ContractPreviewProps {
   loan: Loan;
   onClose: () => void;
+  autoPrint?: boolean;
 }
 
-const ContractPreview: React.FC<ContractPreviewProps> = ({ loan, onClose }) => {
+const ContractPreview: React.FC<ContractPreviewProps> = ({ loan, onClose, autoPrint }) => {
   const handlePrint = () => {
     window.print();
   };
+  
+  // Déclenchement automatique de l'impression si demandé
+  useEffect(() => {
+    if (autoPrint) {
+        const timer = setTimeout(() => {
+            window.print();
+        }, 800);
+        return () => clearTimeout(timer);
+    }
+  }, [autoPrint]);
 
-  const formattedSignedDate = new Date(loan.signedDate).toLocaleDateString('fr-FR', {
+  const formattedSignedDate = new Date(loan.signedDate || loan.createdAt).toLocaleDateString('fr-FR', {
     day: 'numeric',
     month: 'long',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
+    year: 'numeric'
   });
 
   return (
-    <div className="fixed inset-0 bg-slate-900/95 backdrop-blur-2xl z-50 flex items-center justify-center overflow-y-auto print:bg-white print:block print:relative print:z-0 print:p-0">
-      <div className="bg-white min-h-screen sm:min-h-0 w-full max-w-4xl sm:rounded-[2.5rem] shadow-2xl relative sm:my-8 animate-in slide-in-from-bottom-8 duration-500 overflow-hidden flex flex-col print:shadow-none print:my-0 print:rounded-none print:max-w-none">
+    <div className="fixed inset-0 bg-slate-900/95 backdrop-blur-sm z-[100] flex sm:items-center sm:justify-center print:bg-white print:block print:relative print:z-0 print:p-0">
+      
+      {/* Styles spécifiques pour l'impression haute lisibilité */}
+      <style>{`
+        @media print {
+          body, p, div, span, li {
+            font-size: 12pt !important;
+            line-height: 1.6 !important;
+            color: black !important;
+          }
+          h1 {
+            font-size: 24pt !important;
+            font-weight: 900 !important;
+            margin-bottom: 0.5cm !important;
+          }
+          h2, h3, .uppercase {
+            font-size: 14pt !important;
+            font-weight: bold !important;
+          }
+          .text-xs {
+             font-size: 10pt !important;
+          }
+          .leading-relaxed {
+             line-height: 1.8 !important;
+          }
+          .no-print {
+             display: none !important;
+          }
+        }
+      `}</style>
+
+      {/* Container Principal : Pleine hauteur écran mobile (100dvh pour gérer la barre URL mobile) */}
+      <div className="w-full h-[100dvh] sm:h-auto sm:max-h-[90vh] sm:max-w-4xl bg-white sm:rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden print:shadow-none print:h-auto print:max-w-none print:rounded-none">
         
-        {/* Barre d'outils mobile - cachée au PDF */}
-        <div className="sticky top-0 bg-white/95 backdrop-blur border-b border-slate-100 px-6 py-4 flex justify-between items-center no-print z-30 shrink-0">
-          <button onClick={onClose} className="flex items-center gap-2 text-slate-900 font-black text-xs uppercase tracking-widest px-3 py-2 hover:bg-slate-100 rounded-xl transition-all">
-            <ArrowLeft size={18} />
+        {/* BARRE D'OUTILS FIXE EN HAUT - Z-Index élevé pour rester au dessus du texte */}
+        <div className="bg-white border-b border-slate-100 px-4 py-4 sm:px-6 flex justify-between items-center z-50 shrink-0 no-print shadow-sm">
+          <button 
+            onClick={onClose} 
+            className="flex items-center gap-2 text-slate-900 font-black text-xs uppercase tracking-widest px-5 py-4 bg-slate-100 hover:bg-slate-200 rounded-2xl transition-all active:scale-95 touch-manipulation"
+          >
+            <ArrowLeft size={20} />
             Retour
           </button>
+          
           <button 
             onClick={handlePrint}
-            className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-200"
+            className="flex items-center gap-2 px-6 py-4 bg-indigo-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 active:scale-95 touch-manipulation"
           >
-            <Printer size={18} />
-            Télécharger PDF
+            <Printer size={20} />
+            <span className="hidden sm:inline">Imprimer / PDF</span>
           </button>
         </div>
 
-        {/* Document Officiel */}
-        <div className="flex-1 p-8 sm:p-20 md:p-24 bg-white relative print:p-0 print:m-0 print:block">
+        {/* ZONE DE CONTENU DÉFILANTE - Scroll fluide natif */}
+        <div className="flex-1 overflow-y-auto p-6 sm:p-12 md:p-20 bg-white relative scroll-smooth overscroll-contain">
           
-          <div className="max-w-full mx-auto text-slate-900 relative z-10 print:text-black">
+          <div className="max-w-full mx-auto text-slate-900 relative z-10 print:text-black pb-32 sm:pb-0">
             
             {/* Header Document */}
-            <div className="text-center mb-12 sm:mb-20">
-              <div className="inline-flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.3em] mb-8 print:border-2 print:border-black print:text-black print:bg-white">
+            <div className="text-center mb-10 sm:mb-16">
+              <div className="inline-flex items-center gap-2 bg-slate-900 text-white px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.3em] mb-6 print:border-2 print:border-black print:text-black print:bg-white">
                 <ShieldCheck size={14} />
                 Accord Certifié Numériquement
               </div>
-              <h1 className="serif text-3xl sm:text-5xl mb-6 font-bold tracking-tight leading-tight uppercase">Reconnaissance de Dette</h1>
-              <div className="w-24 h-2 bg-indigo-600 mx-auto rounded-full print:bg-black"></div>
+              <h1 className="serif text-2xl sm:text-4xl mb-6 font-bold tracking-tight leading-tight uppercase">Reconnaissance de Dette</h1>
+              <div className="w-16 h-1.5 bg-indigo-600 mx-auto rounded-full print:bg-black"></div>
             </div>
 
-            {/* Corps du texte généré par Gemini */}
-            <div className="serif text-lg sm:text-2xl leading-relaxed text-justify space-y-8 sm:space-y-12 text-slate-800 print:text-black print:text-[14pt] print:leading-normal antialiased">
+            {/* Corps du texte */}
+            <div className="serif text-base sm:text-xl leading-relaxed text-justify space-y-6 sm:space-y-10 text-slate-800 print:text-black print:text-[12pt] print:leading-normal antialiased">
               {loan.contractText ? (
                 loan.contractText.split('\n').map((para, i) => (
-                  para.trim() ? <p key={i} className="break-words">{para}</p> : <div key={i} className="h-4" />
+                  para.trim() ? <p key={i} className="break-words">{para}</p> : <div key={i} className="h-2" />
                 ))
               ) : (
                 <div className="text-center py-20 text-slate-300 animate-pulse">
-                  Rédaction du contrat en cours...
+                  Chargement du contrat...
                 </div>
               )}
             </div>
 
-            {/* ZONE DE SIGNATURES ÉLECTRONIQUES UNIQUES */}
-            <div className="mt-24 pt-12 border-t-4 border-slate-900 print:border-black print:mt-16 page-break-avoid">
-              <h2 className="text-center text-xs font-black uppercase tracking-[0.5em] text-slate-400 mb-12 print:text-black">Signatures Électroniques Certifiées</h2>
+            {/* ZONE DE SIGNATURES */}
+            <div className="mt-16 pt-8 border-t-2 border-slate-200 print:border-black print:mt-12 page-break-avoid">
               
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-12 sm:gap-20 print:grid-cols-2 print:gap-10">
-                {/* Bloc Emprunteur */}
-                <div className="flex flex-col items-center text-center">
-                  <div className="w-full h-48 bg-slate-50 border-2 border-dashed border-slate-200 rounded-[2rem] flex items-center justify-center p-6 relative mb-4 print:bg-white print:border-slate-300 print:h-40">
-                    {loan.borrowerSignature ? (
-                      <img 
-                        src={loan.borrowerSignature} 
-                        alt="Signature Emprunteur" 
-                        className="max-h-full max-w-full object-contain block opacity-100" // Forcer l'affichage
-                      />
-                    ) : (
-                      <span className="text-slate-300 text-xs italic">Signature non détectée</span>
-                    )}
-                    <div className="absolute -top-3 -right-3 bg-emerald-500 text-white p-1.5 rounded-full shadow-lg print:border print:border-black print:text-black print:bg-white no-print">
-                      <CheckCircle size={16} />
-                    </div>
-                  </div>
-                  <p className="text-xl font-black text-slate-900 uppercase tracking-tight mb-1 print:text-lg">{loan.borrowerName}</p>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest print:text-black">L'Emprunteur - Signature Numérique</p>
-                </div>
-
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-12 print:gap-8 items-start">
+                
                 {/* Bloc Prêteur */}
-                <div className="flex flex-col items-center text-center">
-                  <div className="w-full h-48 bg-slate-50 border-2 border-dashed border-slate-200 rounded-[2rem] flex items-center justify-center p-6 relative mb-4 print:bg-white print:border-slate-300 print:h-40">
+                <div className="flex flex-col text-left">
+                  <p className="font-bold uppercase text-slate-900 mb-4 text-xs sm:text-sm print:text-black tracking-widest">LE PRÊTEUR</p>
+                  
+                  <div className="h-20 sm:h-24 mb-2 flex items-center justify-start relative">
                     {loan.lenderSignature ? (
                       <img 
                         src={loan.lenderSignature} 
                         alt="Signature Prêteur" 
-                        className="max-h-full max-w-full object-contain block opacity-100" // Forcer l'affichage
+                        className="max-h-full max-w-full object-contain" 
                       />
                     ) : (
-                      <span className="text-slate-300 text-xs italic">Signature non détectée</span>
+                      <span className="text-slate-300 text-xs italic">Non signé</span>
                     )}
-                    <div className="absolute -top-3 -right-3 bg-emerald-500 text-white p-1.5 rounded-full shadow-lg print:border print:border-black print:text-black print:bg-white no-print">
-                      <CheckCircle size={16} />
-                    </div>
                   </div>
-                  <p className="text-xl font-black text-slate-900 uppercase tracking-tight mb-1 print:text-lg">{loan.lenderName}</p>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest print:text-black">Le Prêteur - Signature Numérique</p>
+                  
+                  <p className="text-[10px] text-slate-500 italic print:text-black font-medium">
+                     Signé électroniquement le {formattedSignedDate} via CKMoney
+                  </p>
                 </div>
+
+                {/* Bloc Emprunteur */}
+                <div className="flex flex-col text-left mt-8 sm:mt-0">
+                   <p className="font-bold uppercase text-slate-900 mb-4 text-xs sm:text-sm print:text-black tracking-widest">L'EMPRUNTEUR</p>
+                   
+                   <p className="text-[11px] text-slate-600 mb-4 print:text-black leading-tight italic">
+                     Mention manuscrite "Lu et approuvé" suivie de la signature :
+                   </p>
+                   
+                   <div className="h-20 sm:h-24 w-full"></div>
+                   <div className="border-b border-slate-300 print:border-black w-3/4"></div>
+                </div>
+
+              </div>
+              
+              {/* Mentions légales bas de page */}
+              <div className="mt-12 text-center text-[9px] text-slate-400 print:text-black print:mt-8">
+                  <p>Document généré par CKMoney. Valeur juridique probante selon l'article 1376 du Code Civil.</p>
               </div>
 
-              {/* Validation en bas de page */}
-              <div className="mt-20 text-center page-break-avoid">
-                <p className="serif text-lg italic text-slate-600 mb-8 print:text-black print:text-sm">
-                  Signé numériquement à {loan.city}, {loan.country} le {formattedSignedDate}
-                </p>
-                <div className="inline-block p-6 border-2 border-slate-100 rounded-3xl text-left print:border-black print:p-4">
-                  <div className="flex items-start gap-4">
-                    <ShieldCheck className="text-indigo-600 shrink-0 mt-1 print:text-black" size={24} />
-                    <div className="text-[10px] text-slate-400 uppercase tracking-widest leading-relaxed print:text-black">
-                      <p className="font-black text-slate-800 mb-1 print:text-[8pt]">Authentification CKMoney Secure</p>
-                      <p>ID Document : {loan.id.toUpperCase()}</p>
-                      <p>Montant initial : {loan.amount} {loan.currency} | Remboursement : EUR (€)</p>
-                      <p className="mt-2 font-bold text-slate-300 print:text-black">© {new Date().getFullYear()} Christian KAMDEM</p>
-                    </div>
+              {/* Annexe Scannée */}
+              {loan.signedContractUrl && (
+                  <div className="mt-12 pt-12 border-t-4 border-slate-200 page-break-avoid print:block">
+                      <h3 className="text-center font-bold uppercase mb-4 text-sm">Annexe : Contrat Scanné</h3>
+                      <img src={loan.signedContractUrl} className="max-w-full mx-auto border shadow-lg rounded-xl" alt="Contrat scanné" />
                   </div>
-                </div>
-              </div>
+              )}
+
             </div>
           </div>
         </div>
